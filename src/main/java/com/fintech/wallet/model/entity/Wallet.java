@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "wallets")
@@ -17,13 +18,16 @@ public class Wallet {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String accountNumber; // เลขที่บัญชีสมมติ
+    private String accountNumber; 
 
     @Column(nullable = false)
     private String ownerName;
 
     @Column(nullable = false)
     private BigDecimal balance;
+
+    @OneToMany(mappedBy = "wallet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Transaction> transactions; 
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
