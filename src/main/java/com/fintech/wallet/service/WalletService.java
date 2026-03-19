@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fintech.wallet.exception.InsufficientBalanceException;
+import com.fintech.wallet.exception.WalletNotFoundException;
 import com.fintech.wallet.model.entity.Transaction;
 import com.fintech.wallet.model.entity.Wallet;
 import com.fintech.wallet.model.enums.TransactionType;
@@ -25,7 +26,7 @@ public class WalletService {
     // (ฝากเงิน + Lock)
     @Transactional
     public Wallet deposit (String accountNumber, BigDecimal amount){
-        Wallet wallet = walletRepository.findByAccountNumberForUpdate(accountNumber).orElseThrow(() -> new RuntimeException("Wallet not found"));
+        Wallet wallet = walletRepository.findByAccountNumberForUpdate(accountNumber).orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
 
         // 1. อัปเดตยอดเงิน
         wallet.setBalance(wallet.getBalance().add(amount));
@@ -40,7 +41,7 @@ public class WalletService {
     @Transactional
     public Wallet withdraw(String accountNumber, BigDecimal amount) {
         Wallet wallet = walletRepository.findByAccountNumberForUpdate(accountNumber)
-                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+                .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
 
         // 1. ตรวจสอบว่าเงินพอไหม
         if (wallet.getBalance().compareTo(amount) < 0) {
@@ -67,7 +68,7 @@ public class WalletService {
 
     public Wallet getWalletDetails(String accountNumber) {
         return walletRepository.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+                .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
     }
 
     private void saveTransaction(Wallet wallet, BigDecimal amount, TransactionType type) {
