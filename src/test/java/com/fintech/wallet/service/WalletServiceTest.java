@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fintech.wallet.exception.InsufficientBalanceException;
+import com.fintech.wallet.model.entity.Transaction;
 import com.fintech.wallet.model.entity.Wallet;
 import com.fintech.wallet.repository.TransactionRepository;
 import com.fintech.wallet.repository.WalletRepository;
@@ -75,15 +77,19 @@ public class WalletServiceTest {
     }
 
     @Test
+    @DisplayName("ถอนเงินเกินบัญชี - ต้องพ่น Exception และไม่บันทึกอะไรเลย")
     void withdraw_InsufficientBalance_ShouldThrowException() {
         // Given
-        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
+        Wallet wallet = Wallet.builder().accountNumber("A").balance(new BigDecimal("100")).build();
+        when(walletRepository.findByAccountNumberForUpdate("A")).thenReturn(Optional.of(wallet));
 
         // When & Then
         assertThrows(InsufficientBalanceException.class, () -> {
-            walletService.withdraw("12345", new BigDecimal("2000.00"));
+            walletService.withdraw("A", new BigDecimal("500"));
         });
-        verify(walletRepository, never()).save(any()); // ต้องไม่มีการบันทึกเงินถ้าเงินไม่พอ
+
+        // ตรวจสอบว่าไม่มีการบันทึก transaction ใดๆ เพราะ error ก่อน
+        verify(transactionRepository, never()).save(any());
     }
 
     // --- TEST TRANSFER ---
@@ -106,4 +112,29 @@ public class WalletServiceTest {
         assertEquals(new BigDecimal("300.00"), receiverWallet.getBalance());
         verify(transactionRepository, times(2)).save(any()); // ต้องมีประวัติ 2 รายการ (ถอนและฝาก)
     }
+
+    @Test
+    @DisplayName("โอนเงินสำเร็จ - ยอดเงินต้องตัด และต้องบันทึกประวัติ 2 รายการ")
+    void transfer_Success_ShouldUpdateBalancesAndSaveHistory() {
+        // [Given] เตรียมข้อมูลจำลอง
+        Wallet sender = Wallet.builder().accountNumber("A").balance(new BigDecimal("1000")).build();
+        Wallet receiver = Wallet.builder().accountNumber("B").balance(new BigDecimal("500")).build();
+        BigDecimal amount = new BigDecimal("200");
+
+        when(walletRepository.findByAccountNumberForUpdate("A")).thenReturn(Optional.of(sender));
+        when(walletRepository.findByAccountNumberForUpdate("B")).thenReturn(Optional.of(receiver));
+
+        // [When] รันคำสั่งโอนเงิน
+        walletService.transfer("A", "B", amount);
+
+        // [Then] ตรวจสอบผลลัพธ์
+        assertEquals(new BigDecimal("800"), sender.getBalance()); // 1000 - 200
+        assertEquals(new BigDecimal("700"), receiver.getBalance()); // 500 + 200
+
+        // ตรวจสอบว่ามีการเรียก save ประวัติการทำรายการ 2 ครั้ง (ขาออก และ ขาเข้า)
+        verify(transactionRepository, times(2)).save(any(Transaction.class));
+        verify(walletRepository, times(1)).save(sender);
+        verify(walletRepository, times(1)).save(receiver);
+    }
+    
 }

@@ -1,7 +1,6 @@
 package com.fintech.wallet.service;
 
 import java.math.BigDecimal;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +16,10 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class WalletService {
-    
-    private WalletRepository walletRepository;
-    private TransactionRepository transactionRepository;
+   
+    private final WalletRepository walletRepository;
+    private final TransactionRepository transactionRepository;
+
     
     // Transactional ป้องกันกรณี เอาเงินใส่แล้วแต่ยังไม่ได้บันทึก transaction จะเกิดการ rollback
     // (ฝากเงิน + Lock)
