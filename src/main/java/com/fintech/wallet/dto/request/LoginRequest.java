@@ -4,20 +4,14 @@ import lombok.Getter;
 import lombok.Setter;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.Positive;
-import java.math.BigDecimal;
 
 @Getter @Setter
-public class TransferRequest {
+public class LoginRequest {
     @NotNull
     @Size(min = 1)
-    private String fromAccountNumber;
+    private String username;
 
     @NotNull
     @Size(min = 1)
-    private String toAccountNumber;
-
-    @NotNull
-    @Positive
-    private BigDecimal amount;
+    private String password;
 }

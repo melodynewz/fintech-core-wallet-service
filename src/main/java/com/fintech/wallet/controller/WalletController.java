@@ -2,12 +2,15 @@ package com.fintech.wallet.controller;
 
 import com.fintech.wallet.dto.request.TransactionRequest;
 import com.fintech.wallet.dto.request.TransferRequest;
+import com.fintech.wallet.dto.response.TransactionResponse;
 import com.fintech.wallet.dto.response.WalletResponse;
 import com.fintech.wallet.model.entity.Wallet;
 import com.fintech.wallet.service.WalletService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/wallets")
@@ -31,23 +34,30 @@ public class WalletController {
         return ResponseEntity.ok(convertToResponse(wallet));
     }
 
+    // 1.1. ดูประวัติธุรกรรม (Transaction History)
+    @GetMapping("/{accountNumber}/transactions")
+    public ResponseEntity<List<TransactionResponse>> getTransactionHistory(@PathVariable String accountNumber) {
+        List<TransactionResponse> transactions = walletService.getTransactionHistory(accountNumber);
+        return ResponseEntity.ok(transactions);
+    }
+
     // 2. ฝากเงิน (Deposit)
     @PostMapping("/deposit")
-    public ResponseEntity<WalletResponse> deposit(@RequestBody TransactionRequest request) {
+    public ResponseEntity<WalletResponse> deposit(@Valid @RequestBody TransactionRequest request) {
         Wallet wallet = walletService.deposit(request.getAccountNumber(), request.getAmount());
         return ResponseEntity.ok(convertToResponse(wallet));
     }
 
     // 3. ถอนเงิน (Withdraw)
     @PostMapping("/withdraw")
-    public ResponseEntity<WalletResponse> withdraw(@RequestBody TransactionRequest request) {
+    public ResponseEntity<WalletResponse> withdraw(@Valid @RequestBody TransactionRequest request) {
         Wallet wallet = walletService.withdraw(request.getAccountNumber(), request.getAmount());
         return ResponseEntity.ok(convertToResponse(wallet));
     }
 
     // 4. โอนเงิน (Transfer)
     @PostMapping("/transfer")
-    public ResponseEntity<String> transfer(@RequestBody TransferRequest request) {
+    public ResponseEntity<String> transfer(@Valid @RequestBody TransferRequest request) {
         walletService.transfer(request.getFromAccountNumber(), request.getToAccountNumber(), request.getAmount());
         return ResponseEntity.ok("Transfer completed successfully");
     }

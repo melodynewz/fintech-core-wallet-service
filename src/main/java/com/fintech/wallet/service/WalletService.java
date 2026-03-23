@@ -1,9 +1,11 @@
 package com.fintech.wallet.service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fintech.wallet.dto.response.TransactionResponse;
 import com.fintech.wallet.exception.InsufficientBalanceException;
 import com.fintech.wallet.exception.WalletNotFoundException;
 import com.fintech.wallet.model.entity.Transaction;
@@ -69,6 +71,22 @@ public class WalletService {
     public Wallet getWalletDetails(String accountNumber) {
         return walletRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
+    }
+
+    public List<TransactionResponse> getTransactionHistory(String accountNumber) {
+        Wallet wallet = walletRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
+        List<Transaction> transactions = transactionRepository.findByWalletIdOrderByTransactionDateDesc(wallet.getId());
+        return transactions.stream()
+                .map(t -> TransactionResponse.builder()
+                        .id(t.getId())
+                        .walletId(t.getWallet().getId())
+                        .accountNumber(t.getWallet().getAccountNumber())
+                        .amount(t.getAmount())
+                        .type(t.getType())
+                        .transactionDate(t.getTransactionDate())
+                        .build())
+                .toList();
     }
 
     private void saveTransaction(Wallet wallet, BigDecimal amount, TransactionType type) {
