@@ -36,8 +36,10 @@ public class WalletController {
     private final WalletService walletService;
 
     // 1. ดูยอดเงิน (Balance Inquiry)
+    @Operation(summary = "Get wallet balance", description = "Retrieve balance and details of a wallet by account number")
     @GetMapping("/{accountNumber}")
-    public ResponseEntity<WalletResponse> getBalance(@PathVariable String accountNumber) {
+    public ResponseEntity<WalletResponse> getBalance(
+            @Parameter(description = "Account number of the wallet", required = true) @PathVariable String accountNumber) {
         Wallet wallet = walletService.getWalletDetails(accountNumber);
         return ResponseEntity.ok(convertToResponse(wallet));
     }
@@ -53,27 +55,35 @@ public class WalletController {
     }
 
     // 2. ฝากเงิน (Deposit)
+    @Operation(summary = "Deposit money into a wallet", description = "Increase wallet balance by specified amount")
     @PostMapping("/deposit")
-    public ResponseEntity<WalletResponse> deposit(@Valid @RequestBody TransactionRequest request) {
+    public ResponseEntity<WalletResponse> deposit(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Transaction details", required = true)
+            @Valid @RequestBody TransactionRequest request) {
         Wallet wallet = walletService.deposit(request.getAccountNumber(), request.getAmount());
         return ResponseEntity.ok(convertToResponse(wallet));
     }
 
     // 3. ถอนเงิน (Withdraw)
+    @Operation(summary = "Withdraw money from a wallet", description = "Decrease wallet balance by specified amount")
     @PostMapping("/withdraw")
-    public ResponseEntity<WalletResponse> withdraw(@Valid @RequestBody TransactionRequest request) {
+    public ResponseEntity<WalletResponse> withdraw(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Transaction details", required = true)
+            @Valid @RequestBody TransactionRequest request) {
         Wallet wallet = walletService.withdraw(request.getAccountNumber(), request.getAmount());
         return ResponseEntity.ok(convertToResponse(wallet));
     }
 
     // 4. โอนเงิน (Transfer)
+    @Operation(summary = "Transfer money between wallets", description = "Move specified amount from one wallet to another")
     @PostMapping("/transfer")
-    public ResponseEntity<String> transfer(@Valid @RequestBody TransferRequest request) {
+    public ResponseEntity<String> transfer(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Transfer details", required = true)
+            @Valid @RequestBody TransferRequest request) {
         walletService.transfer(request.getFromAccountNumber(), request.getToAccountNumber(), request.getAmount());
         return ResponseEntity.ok("Transfer completed successfully");
     }
 
-    // Helper method: เปลี่ยน Entity เป็น DTO (Senior Style)
     private WalletResponse convertToResponse(Wallet wallet) {
         return WalletResponse.builder()
                 .accountNumber(wallet.getAccountNumber())
