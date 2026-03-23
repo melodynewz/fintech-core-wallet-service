@@ -7,13 +7,21 @@ import com.fintech.wallet.dto.response.WalletResponse;
 import com.fintech.wallet.model.entity.Wallet;
 import com.fintech.wallet.service.WalletService;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/v1/wallets")
+@Tag(name = "Wallets", description = "Wallet management APIs")
 @RequiredArgsConstructor
 public class WalletController {
 
@@ -34,10 +42,13 @@ public class WalletController {
         return ResponseEntity.ok(convertToResponse(wallet));
     }
 
-    // 1.1. ดูประวัติธุรกรรม (Transaction History)
+    // 1.1. ดูประวัติธุรกรรม (Transaction History) with pagination
+    @Operation(summary = "Get transaction history", description = "Retrieve paginated transaction history for a wallet account")
     @GetMapping("/{accountNumber}/transactions")
-    public ResponseEntity<List<TransactionResponse>> getTransactionHistory(@PathVariable String accountNumber) {
-        List<TransactionResponse> transactions = walletService.getTransactionHistory(accountNumber);
+    public ResponseEntity<Page<TransactionResponse>> getTransactionHistory(
+            @Parameter(description = "Account number of the wallet", required = true) @PathVariable String accountNumber,
+            @PageableDefault(page = 0, size = 20, sort = "transactionDate", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<TransactionResponse> transactions = walletService.getTransactionHistory(accountNumber, pageable);
         return ResponseEntity.ok(transactions);
     }
 

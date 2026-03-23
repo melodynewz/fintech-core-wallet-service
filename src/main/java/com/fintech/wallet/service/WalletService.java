@@ -2,6 +2,8 @@ package com.fintech.wallet.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -88,7 +90,21 @@ public class WalletService {
                         .build())
                 .toList();
     }
-
+    
+    public Page<TransactionResponse> getTransactionHistory(String accountNumber, Pageable pageable) {
+        Wallet wallet = walletRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
+        Page<Transaction> transactions = transactionRepository.findByWalletId(wallet.getId(), pageable);
+        return transactions.map(t -> TransactionResponse.builder()
+                .id(t.getId())
+                .walletId(t.getWallet().getId())
+                .accountNumber(t.getWallet().getAccountNumber())
+                .amount(t.getAmount())
+                .type(t.getType())
+                .transactionDate(t.getTransactionDate())
+                .build());
+    }
+    
     private void saveTransaction(Wallet wallet, BigDecimal amount, TransactionType type) {
         Transaction transaction = Transaction.builder()
                 .wallet(wallet)
