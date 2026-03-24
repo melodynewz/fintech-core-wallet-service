@@ -27,6 +27,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Give execute permission to mvnw
+        run: chmod +x mvnw
+
       - name: Build with Maven (skip tests for now)
         run: ./mvnw clean compile -DskipTests
 
