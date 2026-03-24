@@ -1,0 +1,52 @@
+# Maven
+target/
+!target/*.jar
+
+# Build artifacts
+*.jar
+*.war
+*.ear
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Environment files (except .env.example)
+.env
+.env.local
+
+# Docker ignore
+Dockerfile
+docker-compose.yml
+
+# Git
+.git/
+.gitignore
+
+# Data directory (can be mounted as volume)
+data/
+
+# Maven wrapper (already copied)
+# mvnw
+# .mvn/
+
+# Temporary files
+tmp/
+temp/
+
+# Test reports
+surefire-reports/
+failsafe-reports/
+jacoco.exec
+coverage/

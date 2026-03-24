@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  wallet-service:
+    build: .
+    container_name: wallet-service
+    ports:
+      - "8081:8081"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-mySecretKeyForJWT12345678901234567890}
+      - JWT_EXPIRATION_MS=${JWT_EXPIRATION_MS:-86400000}
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:./data/fintech_db;DB_CLOSE_DELAY=-1
+      - SPRING_H2_CONSOLE_ENABLED=true
+      - SERVER_PORT=8081
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
