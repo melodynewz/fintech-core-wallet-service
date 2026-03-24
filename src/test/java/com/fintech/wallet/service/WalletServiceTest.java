@@ -141,5 +141,71 @@ public class WalletServiceTest {
         // ตรวจสอบว่า saveAll ถูกเรียกด้วย list ที่มี sender และ receiver
         verify(walletRepository, times(1)).saveAll(anyList());
     }
-    
+
+    @Test
+    @DisplayName("ฝากเงินจำนวนศูนย์ - ยอดคงเดิม")
+    void deposit_ZeroAmount_NoChange() {
+        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
+        when(walletRepository.save(any())).thenReturn(mockWallet);
+
+        Wallet result = walletService.deposit("12345", BigDecimal.ZERO);
+
+        assertEquals(new BigDecimal("1000.00"), result.getBalance());
+        verify(transactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("ฝากเงินจำนวนติดลบ - ยอดลด (edge case)")
+    void deposit_NegativeAmount_BalanceDecreases() {
+        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
+        when(walletRepository.save(any())).thenReturn(mockWallet);
+
+        Wallet result = walletService.deposit("12345", new BigDecimal("-100.00"));
+
+        assertEquals(new BigDecimal("900.00"), result.getBalance());
+        verify(transactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("ถอนเงินจำนวนศูนย์ - ยอดคงเดิม")
+    void withdraw_ZeroAmount_NoChange() {
+        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
+        when(walletRepository.save(any())).thenReturn(mockWallet);
+
+        Wallet result = walletService.withdraw("12345", BigDecimal.ZERO);
+
+        assertEquals(new BigDecimal("1000.00"), result.getBalance());
+        verify(transactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("ถอนเงินจำนวนติดลบ - ยอดเพิ่ม (edge case)")
+    void withdraw_NegativeAmount_BalanceIncreases() {
+        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
+        when(walletRepository.save(any())).thenReturn(mockWallet);
+
+        Wallet result = walletService.withdraw("12345", new BigDecimal("-50.00"));
+
+        assertEquals(new BigDecimal("1050.00"), result.getBalance());
+        verify(transactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("โอนเงินจำนวนศูนย์ - ยอดคงเดิม")
+    void transfer_ZeroAmount_NoChange() {
+        Wallet receiver = Wallet.builder()
+                .accountNumber("67890")
+                .balance(new BigDecimal("100.00"))
+                .build();
+
+        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
+        when(walletRepository.findByAccountNumberForUpdate("67890")).thenReturn(Optional.of(receiver));
+
+        Wallet result = walletService.transfer("12345", "67890", BigDecimal.ZERO);
+
+        assertEquals(new BigDecimal("1000.00"), mockWallet.getBalance());
+        assertEquals(new BigDecimal("100.00"), receiver.getBalance());
+        verify(transactionRepository, times(2)).save(any());
+    }
+
 }
