@@ -54,7 +54,6 @@ public class WalletServiceTest {
     void deposit_Success() {
         // Given
         when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
-        when(walletRepository.save(any())).thenReturn(mockWallet);
 
         // When
         Wallet result = walletService.deposit("12345", new BigDecimal("500.00"));
@@ -69,7 +68,6 @@ public class WalletServiceTest {
     void withdraw_Success() {
         // Given
         when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
-        when(walletRepository.save(any())).thenReturn(mockWallet);
 
         // When
         Wallet result = walletService.withdraw("12345", new BigDecimal("400.00"));
@@ -138,74 +136,61 @@ public class WalletServiceTest {
 
         // ตรวจสอบว่ามีการเรียก save ประวัติการทำรายการ 2 ครั้ง (ขาออก และ ขาเข้า)
         verify(transactionRepository, times(2)).save(any(Transaction.class));
-        // ตรวจสอบว่า saveAll ถูกเรียกด้วย list ที่มี sender และ receiver
-        verify(walletRepository, times(1)).saveAll(anyList());
     }
 
     @Test
-    @DisplayName("ฝากเงินจำนวนศูนย์ - ยอดคงเดิม")
+    @DisplayName("ฝากเงินจำนวนศูนย์ - ต้อง throw exception")
     void deposit_ZeroAmount_NoChange() {
-        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
-        when(walletRepository.save(any())).thenReturn(mockWallet);
+        assertThrows(IllegalArgumentException.class, () -> {
+            walletService.deposit("12345", BigDecimal.ZERO);
+        });
 
-        Wallet result = walletService.deposit("12345", BigDecimal.ZERO);
-
-        assertEquals(new BigDecimal("1000.00"), result.getBalance());
-        verify(transactionRepository, times(1)).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("ฝากเงินจำนวนติดลบ - ยอดลด (edge case)")
+    @DisplayName("ฝากเงินจำนวนติดลบ - ต้อง throw exception")
     void deposit_NegativeAmount_BalanceDecreases() {
-        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
-        when(walletRepository.save(any())).thenReturn(mockWallet);
+        assertThrows(IllegalArgumentException.class, () -> {
+            walletService.deposit("12345", new BigDecimal("-100.00"));
+        });
 
-        Wallet result = walletService.deposit("12345", new BigDecimal("-100.00"));
-
-        assertEquals(new BigDecimal("900.00"), result.getBalance());
-        verify(transactionRepository, times(1)).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("ถอนเงินจำนวนศูนย์ - ยอดคงเดิม")
+    @DisplayName("ถอนเงินจำนวนศูนย์ - ต้อง throw exception")
     void withdraw_ZeroAmount_NoChange() {
-        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
-        when(walletRepository.save(any())).thenReturn(mockWallet);
+        assertThrows(IllegalArgumentException.class, () -> {
+            walletService.withdraw("12345", BigDecimal.ZERO);
+        });
 
-        Wallet result = walletService.withdraw("12345", BigDecimal.ZERO);
-
-        assertEquals(new BigDecimal("1000.00"), result.getBalance());
-        verify(transactionRepository, times(1)).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("ถอนเงินจำนวนติดลบ - ยอดเพิ่ม (edge case)")
+    @DisplayName("ถอนเงินจำนวนติดลบ - ต้อง throw exception")
     void withdraw_NegativeAmount_BalanceIncreases() {
-        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
-        when(walletRepository.save(any())).thenReturn(mockWallet);
+        assertThrows(IllegalArgumentException.class, () -> {
+            walletService.withdraw("12345", new BigDecimal("-50.00"));
+        });
 
-        Wallet result = walletService.withdraw("12345", new BigDecimal("-50.00"));
-
-        assertEquals(new BigDecimal("1050.00"), result.getBalance());
-        verify(transactionRepository, times(1)).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("โอนเงินจำนวนศูนย์ - ยอดคงเดิม")
+    @DisplayName("โอนเงินจำนวนศูนย์ - ต้อง throw exception")
     void transfer_ZeroAmount_NoChange() {
         Wallet receiver = Wallet.builder()
                 .accountNumber("67890")
                 .balance(new BigDecimal("100.00"))
                 .build();
 
-        when(walletRepository.findByAccountNumberForUpdate("12345")).thenReturn(Optional.of(mockWallet));
-        when(walletRepository.findByAccountNumberForUpdate("67890")).thenReturn(Optional.of(receiver));
+        assertThrows(IllegalArgumentException.class, () -> {
+            walletService.transfer("12345", "67890", BigDecimal.ZERO);
+        });
 
-        Wallet result = walletService.transfer("12345", "67890", BigDecimal.ZERO);
-
-        assertEquals(new BigDecimal("1000.00"), mockWallet.getBalance());
-        assertEquals(new BigDecimal("100.00"), receiver.getBalance());
-        verify(transactionRepository, times(2)).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 
 }

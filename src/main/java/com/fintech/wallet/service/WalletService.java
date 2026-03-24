@@ -26,11 +26,21 @@ public class WalletService {
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
 
+    private void validateAmount(BigDecimal amount) {
+        if (amount == null) {
+            throw new IllegalArgumentException("Amount cannot be null");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+    }
+
     
     // Transactional ป้องกันกรณี เอาเงินใส่แล้วแต่ยังไม่ได้บันทึก transaction จะเกิดการ rollback
     // (ฝากเงิน + Lock)
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public Wallet deposit (String accountNumber, BigDecimal amount){
+        validateAmount(amount);
         Wallet wallet = walletRepository.findByAccountNumberForUpdate(accountNumber).orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
 
         // 1. อัปเดตยอดเงิน
@@ -39,12 +49,13 @@ public class WalletService {
         // 2. บันทึกประวัติ
         saveTransaction(wallet, amount, TransactionType.DEPOSIT);
         
-        return walletRepository.save(wallet);
+        return wallet;
     }
 
     // (ถอนเงิน + Lock + เช็คยอด)
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public Wallet withdraw(String accountNumber, BigDecimal amount) {
+        validateAmount(amount);
         Wallet wallet = walletRepository.findByAccountNumberForUpdate(accountNumber)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
 
@@ -59,12 +70,13 @@ public class WalletService {
         // 3. บันทึกประวัติ
         saveTransaction(wallet, amount, TransactionType.WITHDRAW);
 
-        return walletRepository.save(wallet);
+        return wallet;
     }
 
     // (โอนเงิน + Transactional)
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public Wallet transfer(String fromAccount, String toAccount, BigDecimal amount) {
+        validateAmount(amount);
         // เรียงลำดับการล็อคตามเลขบัญชีเพื่อป้องกัน Deadlock
         List<Wallet> lockedWallets = lockWalletsInOrder(fromAccount, toAccount);
         Wallet sender = lockedWallets.get(0).getAccountNumber().equals(fromAccount) ?
@@ -86,8 +98,6 @@ public class WalletService {
         saveTransaction(sender, amount, TransactionType.WITHDRAW);
         saveTransaction(receiver, amount, TransactionType.DEPOSIT);
         
-        // บันทึกการเปลี่ยนแปลงทั้งสองบัญชี
-        walletRepository.saveAll(List.of(sender, receiver));
         return sender;
     }
     

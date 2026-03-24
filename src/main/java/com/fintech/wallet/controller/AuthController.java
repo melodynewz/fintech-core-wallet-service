@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -42,6 +43,10 @@ public class AuthController {
             );
 
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            // Validate that user has at least one authority
+            if (userDetails.getAuthorities().isEmpty()) {
+                throw new BadCredentialsException("User has no authorities");
+            }
             String token = jwtService.generateToken(userDetails);
 
             return ResponseEntity.ok(new LoginResponse(
