@@ -30,14 +30,8 @@ jobs:
       - name: Give execute permission to mvnw
         run: chmod +x mvnw
 
-      - name: Build with Maven (skip tests for now)
-        run: ./mvnw clean compile -DskipTests
-
-      - name: Run tests with coverage
-        run: ./mvnw verify -DskipITs
-
-      - name: Verify coverage
-        run: ./mvnw jacoco:check
+      - name: Run full build with tests and coverage check
+        run: ./mvnw clean verify
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
