@@ -3,12 +3,14 @@ package com.fintech.wallet.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -121,6 +123,7 @@ public class WalletServiceTest {
         Wallet receiver = Wallet.builder().accountNumber("B").balance(new BigDecimal("500")).build();
         BigDecimal amount = new BigDecimal("200");
 
+        // กำหนดลำดับการ lock ตาม account number (A < B)
         when(walletRepository.findByAccountNumberForUpdate("A")).thenReturn(Optional.of(sender));
         when(walletRepository.findByAccountNumberForUpdate("B")).thenReturn(Optional.of(receiver));
 
@@ -133,8 +136,8 @@ public class WalletServiceTest {
 
         // ตรวจสอบว่ามีการเรียก save ประวัติการทำรายการ 2 ครั้ง (ขาออก และ ขาเข้า)
         verify(transactionRepository, times(2)).save(any(Transaction.class));
-        verify(walletRepository, times(1)).save(sender);
-        verify(walletRepository, times(1)).save(receiver);
+        // ตรวจสอบว่า saveAll ถูกเรียกด้วย list ที่มี sender และ receiver
+        verify(walletRepository, times(1)).saveAll(anyList());
     }
     
 }

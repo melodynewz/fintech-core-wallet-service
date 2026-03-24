@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fintech.wallet.dto.response.TransactionResponse;
@@ -28,7 +29,7 @@ public class WalletService {
     
     // Transactional ป้องกันกรณี เอาเงินใส่แล้วแต่ยังไม่ได้บันทึก transaction จะเกิดการ rollback
     // (ฝากเงิน + Lock)
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public Wallet deposit (String accountNumber, BigDecimal amount){
         Wallet wallet = walletRepository.findByAccountNumberForUpdate(accountNumber).orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
 
@@ -42,7 +43,7 @@ public class WalletService {
     }
 
     // (ถอนเงิน + Lock + เช็คยอด)
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public Wallet withdraw(String accountNumber, BigDecimal amount) {
         Wallet wallet = walletRepository.findByAccountNumberForUpdate(accountNumber)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
@@ -62,12 +63,59 @@ public class WalletService {
     }
 
     // (โอนเงิน + Transactional)
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public void transfer(String fromAccount, String toAccount, BigDecimal amount) {
-        // ล็อคทั้งสองบัญชีเพื่อป้องกันปัญหา Race Condition
-        // เรียงลำดับการล็อค (เช่น ตามเลขบัญชี) เพื่อป้องกัน Deadlock
-        withdraw(fromAccount, amount);
-        deposit(toAccount, amount);
+        // เรียงลำดับการล็อคตามเลขบัญชีเพื่อป้องกัน Deadlock
+        List<Wallet> lockedWallets = lockWalletsInOrder(fromAccount, toAccount);
+        Wallet sender = lockedWallets.get(0).getAccountNumber().equals(fromAccount) ?
+                       lockedWallets.get(0) : lockedWallets.get(1);
+        Wallet receiver = lockedWallets.get(0).getAccountNumber().equals(toAccount) ?
+                        lockedWallets.get(0) : lockedWallets.get(1);
+        
+        // ตรวจสอบว่าเงินพอไหม
+        if (sender.getBalance().compareTo(amount) < 0) {
+            throw new InsufficientBalanceException("ยอดเงินไม่เพียงพอ");
+        }
+        
+        // หักเงินจาก sender
+        sender.setBalance(sender.getBalance().subtract(amount));
+        // เพิ่มเงินให้ receiver
+        receiver.setBalance(receiver.getBalance().add(amount));
+        
+        // บันทึกประวัติการทำรายการ
+        saveTransaction(sender, amount, TransactionType.WITHDRAW);
+        saveTransaction(receiver, amount, TransactionType.DEPOSIT);
+        
+        // บันทึกการเปลี่ยนแปลงทั้งสองบัญชี
+        walletRepository.saveAll(List.of(sender, receiver));
+    }
+    
+    private List<Wallet> lockWalletsInOrder(String account1, String account2) {
+        // เรียงลำดับ account numbers เพื่อป้องกัน deadlock
+        String first, second;
+        if (account1.compareTo(account2) <= 0) {
+            first = account1;
+            second = account2;
+        } else {
+            first = account2;
+            second = account1;
+        }
+        
+        // lock บัญชีแรก
+        Wallet wallet1 = walletRepository.findByAccountNumberForUpdate(first)
+                .orElseThrow(() -> new WalletNotFoundException("Wallet not found: " + first));
+        
+        // lock บัญชีที่สอง (อาจจะเป็นบัญชีเดียวกันถ้า account1 เท่ากับ account2)
+        Wallet wallet2;
+        if (first.equals(second)) {
+            wallet2 = wallet1;
+        } else {
+            wallet2 = walletRepository.findByAccountNumberForUpdate(second)
+                    .orElseThrow(() -> new WalletNotFoundException("Wallet not found: " + second));
+        }
+        
+        // คืนลิสต์ wallet ตามลำดับที่ lock (ไม่จำเป็นต้องเรียงตาม input)
+        return List.of(wallet1, wallet2);
     }
 
     public Wallet getWalletDetails(String accountNumber) {
