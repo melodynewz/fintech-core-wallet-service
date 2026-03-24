@@ -15,15 +15,22 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.fintech.wallet.config.JwtAuthenticationFilter;
+import com.fintech.wallet.config.RateLimitFilter;
 
+/**
+ * Security configuration that includes JWT authentication and rate limiting
+ * for brute force attack prevention on login endpoint.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
 
-    public SecurityConfig(@Lazy JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(@Lazy JwtAuthenticationFilter jwtAuthenticationFilter, RateLimitFilter rateLimitFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitFilter = rateLimitFilter;
     }
 
     @Bean
@@ -42,6 +49,8 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+            // Rate limiting for login endpoint (5 requests per minute per IP)
+            .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

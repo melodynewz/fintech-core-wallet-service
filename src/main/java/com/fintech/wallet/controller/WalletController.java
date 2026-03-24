@@ -14,11 +14,14 @@ import org.springframework.data.web.PageableDefault;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/wallets")
 @Tag(name = "Wallets", description = "Wallet management APIs")
@@ -39,7 +42,7 @@ public class WalletController {
     @Operation(summary = "Get wallet balance", description = "Retrieve balance and details of a wallet by account number")
     @GetMapping("/{accountNumber}")
     public ResponseEntity<WalletResponse> getBalance(
-            @Parameter(description = "Account number of the wallet", required = true) @PathVariable String accountNumber) {
+            @Parameter(description = "Account number of the wallet", required = true) @Pattern(regexp = "^[0-9]{5,20}$", message = "Account number must be 5-20 digits") @PathVariable String accountNumber) {
         Wallet wallet = walletService.getWalletDetails(accountNumber);
         return ResponseEntity.ok(convertToResponse(wallet));
     }
@@ -48,7 +51,7 @@ public class WalletController {
     @Operation(summary = "Get transaction history", description = "Retrieve paginated transaction history for a wallet account")
     @GetMapping("/{accountNumber}/transactions")
     public ResponseEntity<Page<TransactionResponse>> getTransactionHistory(
-            @Parameter(description = "Account number of the wallet", required = true) @PathVariable String accountNumber,
+            @Parameter(description = "Account number of the wallet", required = true) @Pattern(regexp = "^[0-9]{5,20}$", message = "Account number must be 5-20 digits") @PathVariable String accountNumber,
             @PageableDefault(page = 0, size = 20, sort = "transactionDate", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<TransactionResponse> transactions = walletService.getTransactionHistory(accountNumber, pageable);
         return ResponseEntity.ok(transactions);
@@ -77,11 +80,11 @@ public class WalletController {
     // 4. โอนเงิน (Transfer)
     @Operation(summary = "Transfer money between wallets", description = "Move specified amount from one wallet to another")
     @PostMapping("/transfer")
-    public ResponseEntity<String> transfer(
+    public ResponseEntity<WalletResponse> transfer(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Transfer details", required = true)
             @Valid @RequestBody TransferRequest request) {
-        walletService.transfer(request.getFromAccountNumber(), request.getToAccountNumber(), request.getAmount());
-        return ResponseEntity.ok("Transfer completed successfully");
+        Wallet wallet = walletService.transfer(request.getFromAccountNumber(), request.getToAccountNumber(), request.getAmount());
+        return ResponseEntity.ok(convertToResponse(wallet));
     }
 
     private WalletResponse convertToResponse(Wallet wallet) {

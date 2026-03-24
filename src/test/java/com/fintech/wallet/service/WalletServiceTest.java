@@ -107,11 +107,12 @@ public class WalletServiceTest {
         when(walletRepository.findByAccountNumberForUpdate("67890")).thenReturn(Optional.of(receiverWallet));
 
         // When
-        walletService.transfer("12345", "67890", new BigDecimal("200.00"));
+        Wallet returnedSender = walletService.transfer("12345", "67890", new BigDecimal("200.00"));
 
         // Then
         assertEquals(new BigDecimal("800.00"), mockWallet.getBalance());
         assertEquals(new BigDecimal("300.00"), receiverWallet.getBalance());
+        assertEquals(mockWallet, returnedSender); // ตรวจสอบว่าคืน sender เดียวกัน
         verify(transactionRepository, times(2)).save(any()); // ต้องมีประวัติ 2 รายการ (ถอนและฝาก)
     }
 
@@ -128,11 +129,12 @@ public class WalletServiceTest {
         when(walletRepository.findByAccountNumberForUpdate("B")).thenReturn(Optional.of(receiver));
 
         // [When] รันคำสั่งโอนเงิน
-        walletService.transfer("A", "B", amount);
+        Wallet returnedSender = walletService.transfer("A", "B", amount);
 
         // [Then] ตรวจสอบผลลัพธ์
         assertEquals(new BigDecimal("800"), sender.getBalance()); // 1000 - 200
         assertEquals(new BigDecimal("700"), receiver.getBalance()); // 500 + 200
+        assertEquals(sender, returnedSender); // ตรวจสอบว่าคืน sender เดียวกัน
 
         // ตรวจสอบว่ามีการเรียก save ประวัติการทำรายการ 2 ครั้ง (ขาออก และ ขาเข้า)
         verify(transactionRepository, times(2)).save(any(Transaction.class));

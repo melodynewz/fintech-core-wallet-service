@@ -50,7 +50,7 @@ class WalletSecurityTest {
     @DisplayName("4. เรียก API ด้วย Token ที่ถูกต้อง - ต้องผ่านเข้าสู่ระบบได้")
     void callApi_WithValidToken_ShouldReturnOkOrNotFound() throws Exception {
         String token = obtainToken();
-        mockMvc.perform(get("/api/v1/wallets/non-exist-account")
+        mockMvc.perform(get("/api/v1/wallets/99999")
                 .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }

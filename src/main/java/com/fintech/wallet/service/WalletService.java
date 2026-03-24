@@ -64,7 +64,7 @@ public class WalletService {
 
     // (โอนเงิน + Transactional)
     @Transactional(isolation = Isolation.REPEATABLE_READ)
-    public void transfer(String fromAccount, String toAccount, BigDecimal amount) {
+    public Wallet transfer(String fromAccount, String toAccount, BigDecimal amount) {
         // เรียงลำดับการล็อคตามเลขบัญชีเพื่อป้องกัน Deadlock
         List<Wallet> lockedWallets = lockWalletsInOrder(fromAccount, toAccount);
         Wallet sender = lockedWallets.get(0).getAccountNumber().equals(fromAccount) ?
@@ -88,6 +88,7 @@ public class WalletService {
         
         // บันทึกการเปลี่ยนแปลงทั้งสองบัญชี
         walletRepository.saveAll(List.of(sender, receiver));
+        return sender;
     }
     
     private List<Wallet> lockWalletsInOrder(String account1, String account2) {
