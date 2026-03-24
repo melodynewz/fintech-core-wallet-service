@@ -81,6 +81,43 @@ java -jar target/*.jar
 ./mvnw test
 ```
 
+## Continuous Integration/Deployment (CI/CD)
+
+This project includes a GitHub Actions workflow for automated testing, building, and deployment.
+
+### Workflow Overview
+
+The pipeline is defined in `.github/workflows/ci-cd.yml` and includes the following jobs:
+
+1. **Build and Test**: Runs on every push and pull request.
+   - Compiles the Java source code with Maven.
+   - Executes unit and integration tests.
+   - Verifies code coverage with JaCoCo (minimum 80% line coverage).
+   - Uploads test results and coverage reports as artifacts.
+
+2. **Docker Build**: Runs on pushes to main/master/develop branches and version tags.
+   - Builds a Docker image using the multi‑stage Dockerfile.
+   - Tags the image with the Git SHA, branch name, and version (if applicable).
+   - Pushes the image to GitHub Container Registry (GHCR) automatically.
+
+3. **Deploy (Example)**: Illustrates how to deploy the built image to a server via SSH.
+   - Pulls the latest image on the target server.
+   - Stops the existing container and starts the new one using Docker Compose.
+   - **Note**: This job is a template and requires you to set up SSH secrets and adjust the script to match your environment.
+
+### How to Enable the Pipeline
+
+1. Ensure your repository has GitHub Actions enabled (enabled by default).
+2. The workflow uses the following secrets for registry login and deployment (optional):
+   - `GITHUB_TOKEN` (automatically provided) – for pushing to GHCR.
+   - `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY` – if you want to use the example deployment.
+
+3. To push to a different container registry (e.g., Docker Hub), modify the `REGISTRY` and `IMAGE_NAME` environment variables in the workflow file and add the corresponding login secrets.
+
+### Manual Trigger
+
+You can also trigger the workflow manually from the GitHub Actions tab.
+
 ## API Documentation
 
 Once the service is running, OpenAPI documentation is available at:
