@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigDecimal;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -32,11 +33,15 @@ class WalletIntegrationTest {
 
     private String authToken;
 
+    private static final AtomicInteger IP_SUFFIX = new AtomicInteger(10);
+
     @BeforeEach
     void setUp() throws Exception {
         // Login to obtain token
         String loginBody = "{\"username\":\"demo\",\"password\":\"password\"}";
         MvcResult result = mockMvc.perform(post("/api/auth/login")
+                        // avoid tripping rate limit across repeated test logins
+                        .header("X-Forwarded-For", "192.168.0." + IP_SUFFIX.incrementAndGet())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginBody))
                 .andExpect(status().isOk())
@@ -50,10 +55,10 @@ class WalletIntegrationTest {
     @Test
     @DisplayName("End-to-end: Get wallet balance")
     void getWalletBalance_ReturnsWallet() throws Exception {
-        mockMvc.perform(get("/api/v1/wallets/10001")
+        mockMvc.perform(get("/api/v1/wallets/12345")
                         .header("Authorization", "Bearer " + authToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountNumber").value("10001"))
+                .andExpect(jsonPath("$.accountNumber").value("12345"))
                 .andExpect(jsonPath("$.ownerName").isNotEmpty())
                 .andExpect(jsonPath("$.balance").isNumber());
     }
@@ -62,7 +67,7 @@ class WalletIntegrationTest {
     @DisplayName("End-to-end: Deposit money")
     void depositMoney_IncreasesBalance() throws Exception {
         // First get current balance
-        MvcResult getResult = mockMvc.perform(get("/api/v1/wallets/10001")
+        MvcResult getResult = mockMvc.perform(get("/api/v1/wallets/12345")
                         .header("Authorization", "Bearer " + authToken))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -71,7 +76,7 @@ class WalletIntegrationTest {
 
         // Deposit 50.00
         TransactionRequest depositRequest = new TransactionRequest();
-        depositRequest.setAccountNumber("10001");
+        depositRequest.setAccountNumber("12345");
         depositRequest.setAmount(new BigDecimal("50.00"));
 
         mockMvc.perform(post("/api/v1/wallets/deposit")
@@ -79,7 +84,7 @@ class WalletIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(depositRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountNumber").value("10001"))
+                .andExpect(jsonPath("$.accountNumber").value("12345"))
                 .andExpect(jsonPath("$.balance").value(beforeBalance.add(new BigDecimal("50.00")).doubleValue()));
     }
 
@@ -88,7 +93,7 @@ class WalletIntegrationTest {
     void withdrawMoney_DecreasesBalance() throws Exception {
         // Ensure sufficient balance by depositing first
         TransactionRequest depositRequest = new TransactionRequest();
-        depositRequest.setAccountNumber("10002");
+        depositRequest.setAccountNumber("12345");
         depositRequest.setAmount(new BigDecimal("100.00"));
         mockMvc.perform(post("/api/v1/wallets/deposit")
                         .header("Authorization", "Bearer " + authToken)
@@ -97,7 +102,7 @@ class WalletIntegrationTest {
                 .andExpect(status().isOk());
 
         // Get balance after deposit
-        MvcResult getResult = mockMvc.perform(get("/api/v1/wallets/10002")
+        MvcResult getResult = mockMvc.perform(get("/api/v1/wallets/12345")
                         .header("Authorization", "Bearer " + authToken))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -106,7 +111,7 @@ class WalletIntegrationTest {
 
         // Withdraw 30.00
         TransactionRequest withdrawRequest = new TransactionRequest();
-        withdrawRequest.setAccountNumber("10002");
+        withdrawRequest.setAccountNumber("12345");
         withdrawRequest.setAmount(new BigDecimal("30.00"));
 
         mockMvc.perform(post("/api/v1/wallets/withdraw")
@@ -114,7 +119,7 @@ class WalletIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(withdrawRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountNumber").value("10002"))
+                .andExpect(jsonPath("$.accountNumber").value("12345"))
                 .andExpect(jsonPath("$.balance").value(beforeBalance.subtract(new BigDecimal("30.00")).doubleValue()));
     }
 
@@ -123,7 +128,7 @@ class WalletIntegrationTest {
     void transferMoney_UpdatesBothBalances() throws Exception {
         // Ensure sufficient balance in source wallet
         TransactionRequest depositRequest = new TransactionRequest();
-        depositRequest.setAccountNumber("10003");
+        depositRequest.setAccountNumber("12345");
         depositRequest.setAmount(new BigDecimal("200.00"));
         mockMvc.perform(post("/api/v1/wallets/deposit")
                         .header("Authorization", "Bearer " + authToken)
@@ -132,14 +137,14 @@ class WalletIntegrationTest {
                 .andExpect(status().isOk());
 
         // Get balances before transfer
-        MvcResult sourceBefore = mockMvc.perform(get("/api/v1/wallets/10003")
+        MvcResult sourceBefore = mockMvc.perform(get("/api/v1/wallets/12345")
                         .header("Authorization", "Bearer " + authToken))
                 .andExpect(status().isOk())
                 .andReturn();
         WalletResponse sourceWallet = objectMapper.readValue(sourceBefore.getResponse().getContentAsString(), WalletResponse.class);
         BigDecimal sourceBalanceBefore = sourceWallet.getBalance();
 
-        MvcResult destBefore = mockMvc.perform(get("/api/v1/wallets/10004")
+        MvcResult destBefore = mockMvc.perform(get("/api/v1/wallets/67890")
                         .header("Authorization", "Bearer " + authToken))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -148,8 +153,8 @@ class WalletIntegrationTest {
 
         // Transfer 75.00
         TransferRequest transferRequest = new TransferRequest();
-        transferRequest.setFromAccountNumber("10003");
-        transferRequest.setToAccountNumber("10004");
+        transferRequest.setFromAccountNumber("12345");
+        transferRequest.setToAccountNumber("67890");
         transferRequest.setAmount(new BigDecimal("75.00"));
 
         mockMvc.perform(post("/api/v1/wallets/transfer")
@@ -157,11 +162,11 @@ class WalletIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(transferRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountNumber").value("10003"))
+                .andExpect(jsonPath("$.accountNumber").value("12345"))
                 .andExpect(jsonPath("$.balance").value(sourceBalanceBefore.subtract(new BigDecimal("75.00")).doubleValue()));
 
         // Verify destination wallet balance increased
-        MvcResult destAfter = mockMvc.perform(get("/api/v1/wallets/10004")
+        MvcResult destAfter = mockMvc.perform(get("/api/v1/wallets/67890")
                         .header("Authorization", "Bearer " + authToken))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -173,7 +178,7 @@ class WalletIntegrationTest {
     @Test
     @DisplayName("End-to-end: Get transaction history paginated")
     void getTransactionHistory_ReturnsPaginated() throws Exception {
-        mockMvc.perform(get("/api/v1/wallets/10001/transactions")
+        mockMvc.perform(get("/api/v1/wallets/12345/transactions")
                         .header("Authorization", "Bearer " + authToken)
                         .param("page", "0")
                         .param("size", "5"))

@@ -134,6 +134,7 @@ public class WalletService {
                 .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
     }
 
+    @Transactional(readOnly = true)
     public List<TransactionResponse> getTransactionHistory(String accountNumber) {
         Wallet wallet = walletRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));
@@ -150,6 +151,7 @@ public class WalletService {
                 .toList();
     }
     
+    @Transactional(readOnly = true)
     public Page<TransactionResponse> getTransactionHistory(String accountNumber, Pageable pageable) {
         Wallet wallet = walletRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new WalletNotFoundException("Wallet not found"));

@@ -16,6 +16,9 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.fintech.wallet.config.JwtAuthenticationFilter;
 import com.fintech.wallet.config.RateLimitFilter;
+import com.fintech.wallet.service.JwtService;
+import com.fintech.wallet.service.UserService;
+import com.fintech.wallet.service.RateLimitService;
 
 /**
  * Security configuration that includes JWT authentication and rate limiting
@@ -25,16 +28,9 @@ import com.fintech.wallet.config.RateLimitFilter;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final RateLimitFilter rateLimitFilter;
-
-    public SecurityConfig(@Lazy JwtAuthenticationFilter jwtAuthenticationFilter, RateLimitFilter rateLimitFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.rateLimitFilter = rateLimitFilter;
-    }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter, RateLimitFilter rateLimitFilter) throws Exception {
         http.csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -50,7 +46,7 @@ public class SecurityConfig {
             )
             .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             // Rate limiting for login endpoint (5 requests per minute per IP)
-            .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class)
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -64,5 +60,15 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService, UserService userService) {
+        return new JwtAuthenticationFilter(jwtService, userService);
+    }
+
+    @Bean
+    public RateLimitFilter rateLimitFilter(RateLimitService rateLimitService) {
+        return new RateLimitFilter(rateLimitService);
     }
 }

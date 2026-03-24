@@ -16,11 +16,6 @@ import org.springframework.context.annotation.Configuration;
                 title = "Wallet Service API",
                 version = "1.0.0",
                 description = "API for managing digital wallets, transactions, and user authentication",
-                contact = @Contact(
-                        name = "FinTech Team",
-                        email = "support@fintech.com",
-                        url = "https://fintech.com"
-                ),
                 license = @License(
                         name = "Apache 2.0",
                         url = "https://www.apache.org/licenses/LICENSE-2.0"
