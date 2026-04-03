@@ -93,7 +93,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-    deploy:
+  deploy:
     name: Deploy to Server (Example)
     runs-on: ubuntu-latest
     needs: docker-build
