@@ -93,11 +93,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+    deploy:
     name: Deploy to Server (Example)
     runs-on: ubuntu-latest
     needs: docker-build
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: false  # ปิดสำหรับ demo
     # This is an example deployment step; you need to customize with your server details.
     # Requires SSH private key and host setup in repository secrets.
     environment:
